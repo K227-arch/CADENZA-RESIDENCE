@@ -168,7 +168,7 @@
             constructor() {
                 this.websocket = null;
                 this.mediaRecorder = null;
-                this.audioContext = null;
+                
                 this.isRecording = false;
                 this.isConnected = false;
                 this.hasPermission = false;
@@ -423,14 +423,18 @@
             }
             
             setupRealtimeAudio() {
-                if (!this.audioContext) {
-                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (!this.audioElement) {
+                    this.audioElement = new Audio();
+                    this.audioElement.autoplay = true;
+                    this.audioElement.playsInline = true;
+                    this.audioElement.muted = false;
+                    document.body.appendChild(this.audioElement);
                 }
-                
-                // Create audio buffer queue for smooth realtime playback
+                this.mediaSource = new MediaSource();
+                this.audioElement.src = URL.createObjectURL(this.mediaSource);
+                this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen.bind(this));
                 this.audioQueue = [];
-                this.isPlayingAudio = false;
-                this.nextPlayTime = 0;
+                this.sourceBuffer = null;
             }
             
             toggleRealtimeChat() {
@@ -517,122 +521,119 @@
             async playRealtimeAudio(audioData) {
                 try {
                     console.log('Attempting to play realtime audio, data size:', audioData.byteLength || audioData.length);
-                    
-                    if (!this.audioContext) {
-                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        console.log('Created new audio context');
+
+                    if (!this.audioElement) {
+                        this.audioElement = new Audio();
+                        this.audioElement.autoplay = true;
+                        this.audioElement.playsInline = true;
+                        this.audioElement.muted = false; // Ensure audio is not muted
+                        document.body.appendChild(this.audioElement); // Append to body or a specific container
                     }
-                    
-                    // Resume audio context if suspended
-                    if (this.audioContext.state === 'suspended') {
-                        console.log('Resuming suspended audio context');
-                        await this.audioContext.resume();
+
+                    if (!this.mediaSource || this.mediaSource.readyState === 'ended') {
+                        this.mediaSource = new MediaSource();
+                        this.audioElement.src = URL.createObjectURL(this.mediaSource);
+                        this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen.bind(this));
+                        this.mediaSource.addEventListener('sourceended', () => console.log('MediaSource ended'));
+                        this.mediaSource.addEventListener('sourceclose', () => console.log('MediaSource closed'));
+                        this.mediaSource.addEventListener('error', (e) => console.error('MediaSource error:', e));
                     }
-                    
-                    console.log('Audio context state:', this.audioContext.state);
-                    
-                    // Ensure we have a proper ArrayBuffer
-                    let audioBuffer;
+
+                    if (this.sourceBuffer && this.sourceBuffer.updating) {
+                        console.warn('SourceBuffer is still updating, queuing audio data.');
+                        // Simple queueing: add to a buffer and try again later
+                        this.audioQueue.push(audioData);
+                        return;
+                    }
+
+                    if (!this.sourceBuffer || this.sourceBuffer.buffered.length === 0) {
+                        // Wait for sourceopen to create sourceBuffer
+                        if (this.mediaSource.readyState === 'open') {
+                            this.sourceBuffer = this.mediaSource.addSourceBuffer('audio/webm; codecs=opus');
+                            this.sourceBuffer.addEventListener('updateend', this.handleUpdateEnd.bind(this));
+                            this.sourceBuffer.addEventListener('error', (e) => console.error('SourceBuffer error:', e));
+                        } else {
+                            // Queue data if MediaSource is not yet open
+                            this.audioQueue.push(audioData);
+                            return;
+                        }
+                    }
+
+                    // Ensure audioData is an ArrayBuffer
+                    let bufferToAppend;
                     if (audioData.buffer) {
-                        audioBuffer = audioData.buffer.slice(
+                        bufferToAppend = audioData.buffer.slice(
                             audioData.byteOffset,
                             audioData.byteOffset + audioData.byteLength
                         );
                     } else if (audioData instanceof ArrayBuffer) {
-                        audioBuffer = audioData;
+                        bufferToAppend = audioData;
                     } else {
-                        throw new Error('Unsupported audio data format');
+                        throw new Error('Unsupported audio data format for MediaSource');
                     }
-                    
-                    console.log('Decoding audio buffer...');
-                    const decodedBuffer = await this.audioContext.decodeAudioData(audioBuffer);
-                    console.log('Audio buffer decoded, duration:', decodedBuffer.duration);
-                    
-                    // Create and configure audio source
-                    const source = this.audioContext.createBufferSource();
-                    source.buffer = decodedBuffer;
-                    source.connect(this.audioContext.destination);
-                    
-                    // Set up event handlers
-                    return new Promise((resolve) => {
-                        source.onended = () => {
-                            console.log('Audio playback ended');
-                            this.updateStatus('Click to start realtime voice chat');
-                            resolve();
-                        };
-                        
-                        source.onerror = (error) => {
-                            console.error('Audio playback error:', error);
-                            this.updateStatus('Error playing audio');
-                            resolve();
-                        };
-                        
-                        // Start playback
-                        console.log('Starting audio playback');
-                        this.updateStatus('🔊 AI speaking...');
-                        source.start();
-                    });
-                    
+
+                    this.sourceBuffer.appendBuffer(bufferToAppend);
+                    this.updateStatus('🔊 AI speaking...');
+
                 } catch (error) {
-                    console.error('Error in playRealtimeAudio:', error);
+                    console.error('Error in playRealtimeAudio (MediaSource):', error);
                     console.error('Audio data type:', typeof audioData);
                     console.error('Audio data:', audioData);
-                    
-                    // Try fallback method if available
+                    this.updateStatus('Error playing audio');
+                    // Fallback to previous method if MediaSource fails
                     if (this.playAudioResponse) {
                         console.log('Attempting fallback audio playback');
                         this.playAudioResponse(audioData);
-                    } else {
-                        this.updateStatus('Error playing audio');
                     }
-                    
-                    throw error; // Re-throw to allow caller to handle the error
                 }
-            }            
-			
-            
-            
-            playNextAudioChunk() {
-                if (this.audioQueue.length === 0) {
-                    this.isPlayingAudio = false;
-                    return;
-                }
-                
-                this.isPlayingAudio = true;
-                const audioBuffer = this.audioQueue.shift();
-                const source = this.audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(this.audioContext.destination);
-                
-                // Calculate when to start next chunk for seamless playback
-                const currentTime = this.audioContext.currentTime;
-                const startTime = Math.max(currentTime, this.nextPlayTime);
-                
-                source.start(startTime);
-                this.nextPlayTime = startTime + audioBuffer.duration;
-                
-                // Schedule next chunk
-                source.onended = () => {
-                    this.playNextAudioChunk();
-                };
             }
-            
+
+            handleSourceOpen() {
+                console.log('MediaSource opened');
+                if (this.mediaSource.sourceBuffers.length === 0) {
+                    this.sourceBuffer = this.mediaSource.addSourceBuffer('audio/webm; codecs=opus');
+                    this.sourceBuffer.addEventListener('updateend', this.handleUpdateEnd.bind(this));
+                    this.sourceBuffer.addEventListener('error', (e) => console.error('SourceBuffer error:', e));
+                }
+                // Append any queued data
+                while (this.audioQueue.length > 0 && !this.sourceBuffer.updating) {
+                    this.sourceBuffer.appendBuffer(this.audioQueue.shift());
+                }
+            }
+
+            handleUpdateEnd() {
+                // If there's more data in the queue, append it
+                if (this.audioQueue.length > 0 && !this.sourceBuffer.updating) {
+                    this.sourceBuffer.appendBuffer(this.audioQueue.shift());
+                }
+                // If the audio element is paused and there's buffered data, try to play
+                if (this.audioElement.paused && this.audioElement.buffered.length > 0) {
+                    this.audioElement.play().catch(e => console.error('Audio play failed:', e));
+                }
+            }
+
             async playAudioResponse(audioData) {
                 try {
-                    if (!this.audioContext) {
-                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    }
+                    // Fallback for non-realtime audio or if MediaSource fails
+                    const audioBlob = new Blob([audioData], { type: 'audio/webm; codecs=opus' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
                     
-                    const audioBuffer = await this.audioContext.decodeAudioData(audioData.buffer);
-                    const source = this.audioContext.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(this.audioContext.destination);
-                    source.start();
+                    if (!this.audioElement) {
+                        this.audioElement = new Audio();
+                        this.audioElement.autoplay = true;
+                        this.audioElement.playsInline = true;
+                        this.audioElement.muted = false;
+                        document.body.appendChild(this.audioElement);
+                    }
+
+                    this.audioElement.src = audioUrl;
+                    await this.audioElement.play();
                     
                     this.updateStatus('AI is speaking...');
                     
-                    source.onended = () => {
+                    this.audioElement.onended = () => {
                         this.updateStatus('Click to start realtime voice chat');
+                        URL.revokeObjectURL(audioUrl);
                     };
                     
                 } catch (error) {
