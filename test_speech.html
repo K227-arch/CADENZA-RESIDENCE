@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Test - Gemini Live API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .speaking { background: #fff3cd; color: #856404; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔊 Speech Test - Gemini Live API</h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+        
+        <div class="test-buttons">
+            <button onclick="connect()">Connect to Speech Server</button>
+            <button onclick="disconnect()">Disconnect</button>
+            <button onclick="testGreeting()" id="greetBtn" disabled>Test Greeting Speech</button>
+            <button onclick="startRecording()" id="recordBtn" disabled>Start Voice Recording</button>
+            <button onclick="stopRecording()" id="stopBtn" disabled>Stop Recording</button>
+        </div>
+        
+        <input type="text" id="messageInput" placeholder="Type a message to convert to speech..." disabled>
+        <button onclick="sendTextMessage()" id="sendBtn" disabled>Send Text for Speech</button>
+        
+        <div class="log" id="log"></div>
+        
+        <div>
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Click "Connect to Speech Server" to establish connection</li>
+                <li>Click "Test Greeting Speech" to hear the AI speak</li>
+                <li>Type a message and click "Send Text for Speech" to hear AI respond</li>
+                <li>Use voice recording for real-time speech interaction</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let audioContext = null;
+        let mediaRecorder = null;
+        let isRecording = false;
+        let isConnected = false;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(status, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${className}`;
+        }
+
+        function updateButtons() {
+            document.getElementById('greetBtn').disabled = !isConnected;
+            document.getElementById('recordBtn').disabled = !isConnected || isRecording;
+            document.getElementById('stopBtn').disabled = !isRecording;
+            document.getElementById('sendBtn').disabled = !isConnected;
+            document.getElementById('messageInput').disabled = !isConnected;
+        }
+
+        async function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 24000, // Gemini outputs at 24kHz
+                    latencyHint: 'interactive'
+                });
+                log('🎵 Audio context initialized');
+            } catch (error) {
+                log('❌ Failed to initialize audio: ' + error.message);
+            }
+        }
+
+        async function connect() {
+            try {
+                log('🔗 Connecting to speech server...');
+                websocket = new WebSocket('ws://localhost:8085/ws');
+                
+                websocket.onopen = () => {
+                    log('✅ Connected to speech server!');
+                    updateStatus('Connected - Ready for Speech', 'connected');
+                    isConnected = true;
+                    updateButtons();
+                };
+                
+                websocket.onmessage = async (event) => {
+                    if (event.data instanceof ArrayBuffer) {
+                        log(`🔊 Received ${event.data.byteLength} bytes of SPEECH audio`);
+                        await playAudioData(event.data);
+                    } else {
+                        try {
+                            const message = JSON.parse(event.data);
+                            log(`📨 Message: ${JSON.stringify(message)}`);
+                            
+                            if (message.type === 'speech_complete') {
+                                updateStatus('Connected - Speech Complete', 'connected');
+                            }
+                        } catch (error) {
+                            log('📨 Text message: ' + event.data);
+                        }
+                    }
+                };
+                
+                websocket.onclose = () => {
+                    log('🔌 Disconnected from server');
+                    updateStatus('Disconnected', 'disconnected');
+                    isConnected = false;
+                    updateButtons();
+                };
+                
+                websocket.onerror = (error) => {
+                    log('❌ WebSocket error: ' + error);
+                };
+                
+                await initAudio();
+                
+            } catch (error) {
+                log('❌ Connection failed: ' + error.message);
+            }
+        }
+
+        function disconnect() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            isConnected = false;
+            updateButtons();
+        }
+
+        async function playAudioData(audioData) {
+            try {
+                if (!audioContext) {
+                    await initAudio();
+                }
+                
+                updateStatus('🔊 Playing Speech...', 'speaking');
+                
+                // Method 1: Try to decode as standard audio
+                try {
+                    const audioBuffer = await audioContext.decodeAudioData(audioData.slice(0));
+                    playAudioBuffer(audioBuffer);
+                    return;
+                } catch (decodeError) {
+                    log('🔄 Standard decode failed, trying raw PCM...');
+                }
+                
+                // Method 2: Handle as raw PCM (24kHz, 16-bit, mono from Gemini)
+                const samples = new Int16Array(audioData);
+                const audioBuffer = audioContext.createBuffer(1, samples.length, 24000);
+                const channelData = audioBuffer.getChannelData(0);
+                
+                // Convert Int16 to Float32
+                for (let i = 0; i < samples.length; i++) {
+                    channelData[i] = samples[i] / 32768.0;
+                }
+                
+                playAudioBuffer(audioBuffer);
+                
+            } catch (error) {
+                log('❌ Error playing audio: ' + error.message);
+                updateStatus('Connected - Ready for Speech', 'connected');
+            }
+        }
+
+        function playAudioBuffer(audioBuffer) {
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContext.destination);
+            
+            source.onended = () => {
+                log(`✅ Speech playback completed (${audioBuffer.duration.toFixed(2)}s)`);
+                updateStatus('Connected - Ready for Speech', 'connected');
+            };
+            
+            source.start();
+            log(`🔊 Playing ${audioBuffer.duration.toFixed(2)}s of speech`);
+        }
+
+        function testGreeting() {
+            if (websocket && isConnected) {
+                log('👋 Requesting greeting speech...');
+                updateStatus('🤖 AI Speaking...', 'speaking');
+                websocket.send(JSON.stringify({
+                    type: 'ai_greeting',
+                    message: 'Hello! I am your AI assistant for the Cadenza Residence virtual tour. How can I help you today?'
+                }));
+            }
+        }
+
+        function sendTextMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message && websocket && isConnected) {
+                log(`💬 Sending text for speech: "${message}"`);
+                updateStatus('🤖 AI Speaking...', 'speaking');
+                websocket.send(JSON.stringify({
+                    type: 'user_message',
+                    message: message
+                }));
+                input.value = '';
+            }
+        }
+
+        async function startRecording() {
+            try {
+                log('🎤 Starting voice recording...');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+                
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0 && websocket && isConnected) {
+                        event.data.arrayBuffer().then(buffer => {
+                            websocket.send(buffer);
+                            log(`🎤 Sent ${buffer.byteLength} bytes of audio`);
+                        });
+                    }
+                };
+                
+                mediaRecorder.start(250); // 250ms chunks
+                isRecording = true;
+                updateButtons();
+                updateStatus('🎤 Recording...', 'speaking');
+                log('✅ Voice recording started');
+                
+            } catch (error) {
+                log('❌ Failed to start recording: ' + error.message);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                isRecording = false;
+                updateButtons();
+                updateStatus('Connected - Ready for Speech', 'connected');
+                log('🔇 Voice recording stopped');
+            }
+        }
+
+        // Handle Enter key in message input
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendTextMessage();
+            }
+        });
+
+        // Initialize
+        updateButtons();
+        log('🚀 Speech test client ready!');
+        log('📍 Make sure the speech server is running on port 8085');
+    </script>
+</body>
+</html>

@@ -36,11 +36,660 @@
 		.fill-viewport.landscape-right { right: env(safe-area-inset-right); }
         #viewer { z-index:1; }
         #preloadContainer { z-index:2; opacity:0; background-color:rgba(255,255,255,1); transition: opacity 0.5s; -webkit-transition: opacity 0.5s; -moz-transition: opacity 0.5s; -o-transition: opacity 0.5s;}
+        
+        /* WebSocket AI Talk Button Styles - Glass Refractive Effect */
+        #aiTalkButton {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.1) 0%, 
+                rgba(255, 255, 255, 0.05) 50%, 
+                rgba(255, 255, 255, 0.1) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        #aiTalkButton:hover {
+            transform: scale(1.1);
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.15) 0%, 
+                rgba(255, 255, 255, 0.08) 50%, 
+                rgba(255, 255, 255, 0.15) 100%);
+            box-shadow: 
+                0 12px 40px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        #aiTalkButton.recording {
+            background: linear-gradient(135deg, 
+                rgba(255, 107, 107, 0.3) 0%, 
+                rgba(238, 90, 36, 0.3) 100%);
+            border-color: rgba(255, 107, 107, 0.4);
+            animation: pulse 1.5s infinite;
+        }
+        
+        #aiTalkButton.connected {
+            background: linear-gradient(135deg, 
+                rgba(0, 210, 211, 0.3) 0%, 
+                rgba(84, 160, 255, 0.3) 100%);
+            border-color: rgba(0, 210, 211, 0.4);
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Status indicator */
+        #aiStatus {
+            position: fixed;
+            top: 90px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: none;
+            max-width: 200px;
+        }
+        
+        /* Permission request button */
+        #permissionButton {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, 
+                rgba(255, 165, 0, 0.3) 0%, 
+                rgba(255, 140, 0, 0.3) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        #permissionButton:hover {
+            transform: scale(1.1);
+            background: linear-gradient(135deg, 
+                rgba(255, 165, 0, 0.4) 0%, 
+                rgba(255, 140, 0, 0.4) 100%);
+        }
     </style>
     <link rel="stylesheet" href="fonts.css?v=1746115429278">
 </head>
 <body>
     <div id="preloadContainer" class="fill-viewport"><div style="z-index: 4; position: absolute; overflow: hidden; display: flex; align-items: center; text-align: center; overflow: hidden; left: 0%; top: 2.62%; width: 100.00%; height: 92.72%" ><video id="video_85588E39_8A92_6091_41E0_692365203C94" width="100%" height="100%" autoplay onended="onBodyClick()" playsinline webkit-playsinline poster="media/video_85588E39_8A92_6091_41E0_692365203C94_poster_en.jpg" preload="auto"><source src="media/video_85588E39_8A92_6091_41E0_692365203C94_en.mp4" type="video/mp4">Your browser does not support the video tab</video></div><div style="z-index: 5; position: absolute; overflow: hidden; background-size: contain; background-image: url('loading/HTMLImage_8592268C_8A92_E077_41E1_2D3CA8D97D28.png'); background-repeat: no-repeat; background-position: center center; overflow: hidden; left: 0%; bottom: 77.87%; width: 17.94%; height: 22.13%" ></div><div style="z-index: 6; position: absolute; overflow: hidden; background-size: contain; background-image: url('loading/HTMLImage_9E9ABF4A_8B6F_436A_41D7_8C43B82CF5E6.png'); background-repeat: no-repeat; background-position: center center; overflow: hidden; right: 0.09%; bottom: 0.87%; width: 13.72%; height: 6.05%" ></div></div>
     <div id="viewer" class="fill-viewport"></div>
+    
+    <!-- AI Talk WebSocket Buttons -->
+    <button id="permissionButton" title="Enable Microphone">🔒</button>
+    <button id="aiTalkButton" title="Talk to AI Assistant">🎤</button>
+    <div id="aiStatus"></div>
+    
+    <!-- WebSocket AI Talk JavaScript -->
+    <script>
+        class AITalkClient {
+            constructor() {
+                this.websocket = null;
+                this.mediaRecorder = null;
+                this.audioContext = null;
+                this.isRecording = false;
+                this.isConnected = false;
+                this.hasPermission = false;
+                this.audioChunks = [];
+                
+                this.button = document.getElementById('aiTalkButton');
+                this.permissionButton = document.getElementById('permissionButton');
+                this.status = document.getElementById('aiStatus');
+                
+                this.init();
+            }
+            
+            init() {
+                // Show permission button after video ends or after 3 seconds
+                const video = document.getElementById('video_85588E39_8A92_6091_41E0_692365203C94');
+                if (video) {
+                    video.addEventListener('ended', () => this.showPermissionButton());
+                    // Fallback: show button after 3 seconds if video doesn't end
+                    setTimeout(() => this.showPermissionButton(), 3000);
+                } else {
+                    // If no video, show button immediately
+                    this.showPermissionButton();
+                }
+                
+                this.permissionButton.addEventListener('click', () => this.requestPermission());
+                this.button.addEventListener('click', () => this.toggleConnection());
+            }
+            
+            showPermissionButton() {
+                this.permissionButton.style.display = 'flex';
+                this.updateStatus('Click to enable microphone access');
+            }
+            
+            showAIButton() {
+                this.permissionButton.style.display = 'none';
+                this.button.style.display = 'flex';
+                this.updateStatus('Click to start realtime voice chat');
+            }
+            
+            async requestPermission() {
+                try {
+                    this.updateStatus('Requesting microphone permission...');
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } 
+                    });
+                    
+                    // Stop the stream immediately - we just needed permission
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    this.hasPermission = true;
+                    this.permissionButton.innerHTML = '✅';
+                    this.updateStatus('Microphone access granted!');
+                    
+                    // Show AI button after a short delay
+                    setTimeout(() => this.showAIButton(), 1500);
+                    
+                } catch (error) {
+                    console.error('Permission error:', error);
+                    
+                    if (error.name === 'NotAllowedError') {
+                        this.updateStatus('Microphone access denied. Please allow access in browser settings.');
+                    } else if (error.name === 'NotFoundError') {
+                        this.updateStatus('No microphone found. Please connect a microphone.');
+                    } else {
+                        this.updateStatus('Error accessing microphone. Please try again.');
+                    }
+                }
+            }
+            
+            async toggleConnection() {
+                if (!this.isConnected) {
+                    // Initialize audio context with user interaction
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        console.log('Audio context created with user interaction');
+                    }
+                    
+                    // Resume audio context if needed
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
+                        console.log('Audio context resumed');
+                    }
+                    
+                    // Test audio with a brief tone to confirm it's working
+                    this.playTestSound();
+                    
+                    await this.connect();
+                } else {
+                    this.disconnect();
+                }
+            }
+            
+            async connect() {
+                try {
+                    this.updateStatus('Connecting to AI...');
+                    
+                    // Get microphone stream (permission already granted)
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } 
+                    });
+                    
+                    // Connect WebSocket
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.host}/ws`;
+                    
+                    this.websocket = new WebSocket(wsUrl);
+                    
+                    this.websocket.onopen = () => {
+                        this.isConnected = true;
+                        this.button.classList.add('connected');
+                        this.button.innerHTML = '🔊';
+                        this.updateStatus('Connected! AI will greet you...');
+                        this.setupAudioRecording(stream);
+                        
+                        // Request AI to speak first with a greeting
+                        setTimeout(() => {
+                            this.websocket.send(JSON.stringify({
+                                type: 'ai_greeting',
+                                message: 'Hello! I\'m your AI assistant for the Cadenza Residence virtual tour. How can I help you today?'
+                            }));
+                        }, 1000);
+                    };
+                    
+                    this.websocket.binaryType = 'arraybuffer';
+                    this.websocket.onmessage = async (event) => {
+                        try {
+                            // Check if the message is binary data (audio)
+                            if (event.data instanceof ArrayBuffer) {
+                                console.log('Received binary audio data');
+                                const audioArray = new Uint8Array(event.data);
+                                await this.playRealtimeAudio(audioArray);
+                                return;
+                            }
+                            
+                            // Try to parse as JSON (for control messages)
+                            let message;
+                            try {
+                                message = JSON.parse(event.data);
+                            } catch (e) {
+                                console.error('Failed to parse WebSocket message:', e);
+                                return;
+                            }
+                            
+                            // Handle different message types
+                            switch (message.type) {
+                                case 'audio_chunk':
+                                case 'ai_response':
+                                case 'greeting_audio':
+                                    if (message.audio_data) {
+                                        console.log('Received base64 audio message type:', message.type);
+                                        const binaryString = atob(message.audio_data);
+                                        const audioArray = new Uint8Array(binaryString.length);
+                                        for (let i = 0; i < binaryString.length; i++) {
+                                            audioArray[i] = binaryString.charCodeAt(i);
+                                        }
+                                        await this.playRealtimeAudio(audioArray);
+                                    }
+                                    break;
+                                    
+                                case 'realtime_status':
+                                    this.updateStatus(message.status || 'Realtime chat active');
+                                    break;
+                                    
+                                case 'voice_activity':
+                                    if (message.ai_speaking) {
+                                        this.button.innerHTML = '🔊';
+                                        this.updateStatus('🔊 AI speaking...');
+                                    } else {
+                                        this.button.innerHTML = '🗣️';
+                                        this.updateStatus('🎙️ Listening...');
+                                    }
+                                    break;
+                                    
+                                case 'greeting_complete':
+                                    this.updateStatus('Click to start realtime voice chat');
+                                    break;
+                                    
+                                case 'error':
+                                    console.error('Server error:', message.error);
+                                    this.updateStatus('Error: ' + message.error);
+                                    break;
+                                    
+                                default:
+                                    console.log('Unknown message type:', message.type, message);
+                            }
+                        } catch (error) {
+                            console.error('Error handling WebSocket message:', error);
+                        }
+                    };
+                    
+                    this.websocket.onclose = () => {
+                        this.handleDisconnection();
+                    };
+                    
+                    this.websocket.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.updateStatus('Connection error. Please try again.');
+                        this.handleDisconnection();
+                    };
+                    
+                } catch (error) {
+                    console.error('Error connecting:', error);
+                    
+                    // Provide specific error messages based on error type
+                    if (error.name === 'NotAllowedError') {
+                        this.updateStatus('Microphone access denied. Please allow microphone access and try again.');
+                    } else if (error.name === 'NotFoundError') {
+                        this.updateStatus('No microphone found. Please connect a microphone and try again.');
+                    } else if (error.name === 'NotSupportedError') {
+                        this.updateStatus('Microphone not supported by this browser.');
+                    } else if (error.name === 'NotReadableError') {
+                        this.updateStatus('Microphone is being used by another application.');
+                    } else {
+                        this.updateStatus('Failed to connect. Please check microphone permissions and try again.');
+                    }
+                }
+            }
+            
+            setupAudioRecording(stream) {
+                // Setup MediaRecorder for realtime audio streaming
+                this.mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+                
+                this.mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0 && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                        // Send audio chunk to WebSocket for realtime processing
+                        event.data.arrayBuffer().then(buffer => {
+                            this.websocket.send(buffer); // Send raw audio for realtime processing
+                        });
+                    }
+                };
+                
+                // Setup audio context for realtime playback
+                this.setupRealtimeAudio();
+                
+                // Add click event listener for toggle realtime chat
+                this.button.addEventListener('click', () => this.toggleRealtimeChat());
+            }
+            
+            setupRealtimeAudio() {
+                if (!this.audioContext) {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                // Create audio buffer queue for smooth realtime playback
+                this.audioQueue = [];
+                this.isPlayingAudio = false;
+                this.nextPlayTime = 0;
+            }
+            
+            toggleRealtimeChat() {
+                if (!this.isRecording) {
+                    this.startRealtimeChat();
+                } else {
+                    this.stopRealtimeChat();
+                }
+            }
+            
+            startRealtimeChat() {
+                if (this.mediaRecorder && !this.isRecording) {
+                    this.isRecording = true;
+                    this.button.classList.add('recording');
+                    this.button.innerHTML = '🗣️';
+                    this.updateStatus('🎙️ Realtime voice chat active - Speak naturally');
+                    
+                    // Start continuous streaming for realtime conversation
+                    this.mediaRecorder.start(100); // Send chunks every 100ms for ultra-low latency
+                    
+                    // Send realtime mode signal to server
+                    if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                        this.websocket.send(JSON.stringify({
+                            type: 'start_realtime_voice',
+                            config: {
+                                mode: 'conversation',
+                                voice_activity_detection: true,
+                                continuous_listening: true,
+                                interrupt_enabled: true,
+                                low_latency: true,
+                                sample_rate: 16000,
+                                chunk_duration_ms: 100
+                            }
+                        }));
+                    }
+                }
+            }
+            
+            stopRealtimeChat() {
+                if (this.mediaRecorder && this.isRecording) {
+                    this.isRecording = false;
+                    this.button.classList.remove('recording');
+                    this.button.innerHTML = '🔊';
+                    this.updateStatus('Realtime voice chat ended');
+                    this.mediaRecorder.stop();
+                    
+                    // Clear audio queue
+                    this.audioQueue = [];
+                    this.isPlayingAudio = false;
+                    
+                    // Send stop signal to server
+                    if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                        this.websocket.send(JSON.stringify({
+                            type: 'stop_realtime_voice'
+                        }));
+                    }
+                }
+            }
+            
+            playTestSound() {
+                try {
+                    if (this.audioContext) {
+                        // Create a brief 440Hz tone to test audio
+                        const oscillator = this.audioContext.createOscillator();
+                        const gainNode = this.audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(this.audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(440, this.audioContext.currentTime);
+                        gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+                        
+                        oscillator.start(this.audioContext.currentTime);
+                        oscillator.stop(this.audioContext.currentTime + 0.1);
+                        
+                        console.log('Test sound played');
+                    }
+                } catch (error) {
+                    console.error('Error playing test sound:', error);
+                }
+            }
+            
+            async playRealtimeAudio(audioData) {
+                try {
+                    console.log('Attempting to play realtime audio, data size:', audioData.byteLength || audioData.length);
+                    
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        console.log('Created new audio context');
+                    }
+                    
+                    // Resume audio context if suspended
+                    if (this.audioContext.state === 'suspended') {
+                        console.log('Resuming suspended audio context');
+                        await this.audioContext.resume();
+                    }
+                    
+                    console.log('Audio context state:', this.audioContext.state);
+                    
+                    // Ensure we have a proper ArrayBuffer
+                    let audioBuffer;
+                    if (audioData.buffer) {
+                        audioBuffer = audioData.buffer.slice(
+                            audioData.byteOffset,
+                            audioData.byteOffset + audioData.byteLength
+                        );
+                    } else if (audioData instanceof ArrayBuffer) {
+                        audioBuffer = audioData;
+                    } else {
+                        throw new Error('Unsupported audio data format');
+                    }
+                    
+                    console.log('Decoding audio buffer...');
+                    const decodedBuffer = await this.audioContext.decodeAudioData(audioBuffer);
+                    console.log('Audio buffer decoded, duration:', decodedBuffer.duration);
+                    
+                    // Create and configure audio source
+                    const source = this.audioContext.createBufferSource();
+                    source.buffer = decodedBuffer;
+                    source.connect(this.audioContext.destination);
+                    
+                    // Set up event handlers
+                    return new Promise((resolve) => {
+                        source.onended = () => {
+                            console.log('Audio playback ended');
+                            this.updateStatus('Click to start realtime voice chat');
+                            resolve();
+                        };
+                        
+                        source.onerror = (error) => {
+                            console.error('Audio playback error:', error);
+                            this.updateStatus('Error playing audio');
+                            resolve();
+                        };
+                        
+                        // Start playback
+                        console.log('Starting audio playback');
+                        this.updateStatus('🔊 AI speaking...');
+                        source.start();
+                    });
+                    
+                } catch (error) {
+                    console.error('Error in playRealtimeAudio:', error);
+                    console.error('Audio data type:', typeof audioData);
+                    console.error('Audio data:', audioData);
+                    
+                    // Try fallback method if available
+                    if (this.playAudioResponse) {
+                        console.log('Attempting fallback audio playback');
+                        this.playAudioResponse(audioData);
+                    } else {
+                        this.updateStatus('Error playing audio');
+                    }
+                    
+                    throw error; // Re-throw to allow caller to handle the error
+                }
+            }            
+			
+            
+            
+            playNextAudioChunk() {
+                if (this.audioQueue.length === 0) {
+                    this.isPlayingAudio = false;
+                    return;
+                }
+                
+                this.isPlayingAudio = true;
+                const audioBuffer = this.audioQueue.shift();
+                const source = this.audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(this.audioContext.destination);
+                
+                // Calculate when to start next chunk for seamless playback
+                const currentTime = this.audioContext.currentTime;
+                const startTime = Math.max(currentTime, this.nextPlayTime);
+                
+                source.start(startTime);
+                this.nextPlayTime = startTime + audioBuffer.duration;
+                
+                // Schedule next chunk
+                source.onended = () => {
+                    this.playNextAudioChunk();
+                };
+            }
+            
+            async playAudioResponse(audioData) {
+                try {
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    
+                    const audioBuffer = await this.audioContext.decodeAudioData(audioData.buffer);
+                    const source = this.audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(this.audioContext.destination);
+                    source.start();
+                    
+                    this.updateStatus('AI is speaking...');
+                    
+                    source.onended = () => {
+                        this.updateStatus('Click to start realtime voice chat');
+                    };
+                    
+                } catch (error) {
+                    console.error('Error playing audio:', error);
+                    this.updateStatus('Click to start realtime voice chat');
+                }
+            }
+            
+            disconnect() {
+                if (this.websocket) {
+                    this.websocket.close();
+                }
+                this.handleDisconnection();
+            }
+            
+            handleDisconnection() {
+                this.isConnected = false;
+                this.isRecording = false;
+                
+                if (this.mediaRecorder && this.mediaRecorder.stream) {
+                    this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                }
+                
+                this.button.classList.remove('connected', 'recording');
+                this.button.innerHTML = '🎤';
+                this.updateStatus('Click to start realtime voice chat');
+                
+                this.websocket = null;
+                this.mediaRecorder = null;
+            }
+            
+            updateStatus(message) {
+                this.status.textContent = message;
+                this.status.style.display = 'block';
+                
+                // Auto-hide status after 3 seconds
+                clearTimeout(this.statusTimeout);
+                this.statusTimeout = setTimeout(() => {
+                    if (this.status.textContent === message) {
+                        this.status.style.display = 'none';
+                    }
+                }, 3000);
+            }
+        }
+        
+        // Initialize AI Talk Client when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AITalkClient();
+        });
+        
+        // Also initialize if DOMContentLoaded already fired
+        if (document.readyState === 'loading') {
+            // Document still loading
+        } else {
+            // Document already loaded
+            new AITalkClient();
+        }
+    </script>
 </body>
 </html>

@@ -1,0 +1,4 @@
+fastapi
+soundfile
+librosa
+google-genai
