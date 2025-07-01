@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@livekit/components-react": "^2.9.12",
+    "livekit-client": "^2.14.0",
+    "yarn": "^1.22.22"
+  }
+}

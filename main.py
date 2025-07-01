@@ -8,6 +8,7 @@ from livekit.plugins import (
 )
 import sounddevice as sd
 load_dotenv()
+LIVEKIT_ROOM_NAME = os.getenv("LIVEKIT_ROOM_NAME", "cadenza-residence-ai-chat") # Define your room name here
 
 sd.default.device = 10 # Still targeting pulse
 # A common block size (can experiment with 512, 2048)
