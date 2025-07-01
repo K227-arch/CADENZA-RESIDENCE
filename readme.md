@@ -1,6 +1,22 @@
 # LiveKit Voice AI Assistant
 This project implements a real-time voice AI assistant using LiveKit for WebRTC communication, a Python backend powered by LiveKit Agents and Google's Gemini LLM, and a React (Next.js) frontend for user interaction.
-
+## installation
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+#### ubuntu setup
+curl -sSL https://get.livekit.io | bash
+sudo apt install libportaudio2
+#### livekit setup
+livekit-server --dev
+#### livekit agent
+python main.py
+#### livekit token server
+python server.py
+#### ngrok port forwarding 
+ngrok http 8080
+#### frontend setup
+launched with the server.py script
 ## Table of Contents
 - [Features](#-features)
 - [Architecture](#️-architecture)
